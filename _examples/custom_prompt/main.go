@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/spaceweasel/promptui"
+	"github.com/king-glitch/promptui"
 )
 
 type pepper struct {
@@ -15,7 +15,10 @@ type pepper struct {
 
 func main() {
 	validate := func(input string) error {
-		_, err := strconv.ParseFloat(input, 64)
+		_, err := strconv.ParseFloat(
+			input,
+			64,
+		)
 		return err
 	}
 
@@ -35,9 +38,15 @@ func main() {
 	result, err := prompt.Run()
 
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
+		fmt.Printf(
+			"Prompt failed %v\n",
+			err,
+		)
 		return
 	}
 
-	fmt.Printf("You answered %s\n", result)
+	fmt.Printf(
+		"You answered %s\n",
+		result,
+	)
 }

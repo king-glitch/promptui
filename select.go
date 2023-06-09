@@ -9,8 +9,8 @@ import (
 
 	"github.com/chzyer/readline"
 	"github.com/juju/ansiterm"
-	"github.com/spaceweasel/promptui/list"
-	"github.com/spaceweasel/promptui/screenbuf"
+	"github.com/king-glitch/promptui/list"
+	"github.com/king-glitch/promptui/screenbuf"
 )
 
 // SelectedAdd is used internally inside SelectWithAdd when the add option is selected in select mode.
@@ -116,24 +116,27 @@ type Key struct {
 // text/template syntax. Custom state, colors and background color are available for use inside
 // the templates and are documented inside the Variable section of the docs.
 //
-// Examples
+// # Examples
 //
 // text/templates use a special notation to display programmable content. Using the double bracket notation,
 // the value can be printed with specific helper functions. For example
 //
 // This displays the value given to the template as pure, unstylized text. Structs are transformed to string
 // with this notation.
-// 	'{{ . }}'
+//
+//	'{{ . }}'
 //
 // This displays the name property of the value colored in cyan
-// 	'{{ .Name | cyan }}'
+//
+//	'{{ .Name | cyan }}'
 //
 // This displays the label property of value colored in red with a cyan background-color
-// 	'{{ .Label | red | cyan }}'
+//
+//	'{{ .Label | red | cyan }}'
 //
 // See the doc of text/template for more info: https://golang.org/pkg/text/template/
 //
-// Notes
+// # Notes
 //
 // Setting any of these templates will remove the icons from the default templates. They must
 // be added back in each of their specific templates. The styles.go constants contains the default icons.
@@ -187,8 +190,15 @@ var SearchPrompt = "Search: "
 // value within to list. Run will keep the prompt alive until it has been canceled from
 // the command prompt or it has received a valid value. It will return the value and an error if any
 // occurred during the select's execution.
-func (s *Select) Run() (int, string, error) {
-	return s.RunCursorAt(s.CursorPos, 0)
+func (s *Select) Run() (
+	int,
+	string,
+	error,
+) {
+	return s.RunCursorAt(
+		s.CursorPos,
+		0,
+	)
 }
 
 // RunCursorAt executes the select list, initializing the cursor to the given
@@ -197,12 +207,19 @@ func (s *Select) Run() (int, string, error) {
 // within to list. Run will keep the prompt alive until it has been canceled
 // from the command prompt or it has received a valid value. It will return
 // the value and an error if any occurred during the select's execution.
-func (s *Select) RunCursorAt(cursorPos, scroll int) (int, string, error) {
+func (s *Select) RunCursorAt(cursorPos, scroll int) (
+	int,
+	string,
+	error,
+) {
 	if s.Size == 0 {
 		s.Size = 5
 	}
 
-	l, err := list.New(s.Items, s.Size)
+	l, err := list.New(
+		s.Items,
+		s.Size,
+	)
 	if err != nil {
 		return 0, "", err
 	}
@@ -216,10 +233,21 @@ func (s *Select) RunCursorAt(cursorPos, scroll int) (int, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	return s.innerRun(cursorPos, scroll, ' ')
+	return s.innerRun(
+		cursorPos,
+		scroll,
+		' ',
+	)
 }
 
-func (s *Select) innerRun(cursorPos, scroll int, top rune) (int, string, error) {
+func (s *Select) innerRun(
+	cursorPos, scroll int,
+	top rune,
+) (
+	int,
+	string,
+	error,
+) {
 	c := &readline.Config{
 		Stdin:  s.Stdin,
 		Stdout: s.Stdout,
@@ -246,112 +274,141 @@ func (s *Select) innerRun(cursorPos, scroll int, top rune) (int, string, error) 
 	rl.Write([]byte(hideCursor))
 	sb := screenbuf.New(rl)
 
-	cur := NewCursor("", s.Pointer, false)
+	cur := NewCursor(
+		"",
+		s.Pointer,
+		false,
+	)
 
 	canSearch := s.Searcher != nil
 	searchMode := s.StartInSearchMode
 	s.list.SetCursor(cursorPos)
 	s.list.SetStart(scroll)
 
-	c.SetListener(func(line []rune, pos int, key rune) ([]rune, int, bool) {
-		switch {
-		case key == KeyEnter:
-			return nil, 0, true
-		case key == s.Keys.Next.Code || (key == 'j' && !searchMode):
-			s.list.Next()
-		case key == s.Keys.Prev.Code || (key == 'k' && !searchMode):
-			s.list.Prev()
-		case key == s.Keys.Search.Code:
-			if !canSearch {
-				break
+	c.SetListener(
+		func(
+			line []rune,
+			pos int,
+			key rune,
+		) (
+			[]rune,
+			int,
+			bool,
+		) {
+			switch {
+			case key == KeyEnter:
+				return nil, 0, true
+			case key == s.Keys.Next.Code || (key == 'j' && !searchMode):
+				s.list.Next()
+			case key == s.Keys.Prev.Code || (key == 'k' && !searchMode):
+				s.list.Prev()
+			case key == s.Keys.Search.Code:
+				if !canSearch {
+					break
+				}
+
+				if searchMode {
+					searchMode = false
+					cur.Replace("")
+					s.list.CancelSearch()
+				} else {
+					searchMode = true
+				}
+			case key == KeyBackspace || key == KeyCtrlH:
+				if !canSearch || !searchMode {
+					break
+				}
+
+				cur.Backspace()
+				if len(cur.Get()) > 0 {
+					s.list.Search(cur.Get())
+				} else {
+					s.list.CancelSearch()
+				}
+			case key == s.Keys.PageUp.Code || (key == 'h' && !searchMode):
+				s.list.PageUp()
+			case key == s.Keys.PageDown.Code || (key == 'l' && !searchMode):
+				s.list.PageDown()
+			default:
+				if canSearch && searchMode {
+					cur.Update(string(line))
+					s.list.Search(cur.Get())
+				}
 			}
 
 			if searchMode {
-				searchMode = false
-				cur.Replace("")
-				s.list.CancelSearch()
-			} else {
-				searchMode = true
-			}
-		case key == KeyBackspace || key == KeyCtrlH:
-			if !canSearch || !searchMode {
-				break
+				header := SearchPrompt + cur.Format()
+				sb.WriteString(header)
+			} else if !s.HideHelp {
+				help := s.renderHelp(canSearch)
+				sb.Write(help)
 			}
 
-			cur.Backspace()
-			if len(cur.Get()) > 0 {
-				s.list.Search(cur.Get())
-			} else {
-				s.list.CancelSearch()
-			}
-		case key == s.Keys.PageUp.Code || (key == 'h' && !searchMode):
-			s.list.PageUp()
-		case key == s.Keys.PageDown.Code || (key == 'l' && !searchMode):
-			s.list.PageDown()
-		default:
-			if canSearch && searchMode {
-				cur.Update(string(line))
-				s.list.Search(cur.Get())
-			}
-		}
+			label := render(
+				s.Templates.label,
+				s.Label,
+			)
+			sb.Write(label)
 
-		if searchMode {
-			header := SearchPrompt + cur.Format()
-			sb.WriteString(header)
-		} else if !s.HideHelp {
-			help := s.renderHelp(canSearch)
-			sb.Write(help)
-		}
+			items, idx := s.list.Items()
+			last := len(items) - 1
 
-		label := render(s.Templates.label, s.Label)
-		sb.Write(label)
+			for i, item := range items {
+				page := " "
 
-		items, idx := s.list.Items()
-		last := len(items) - 1
+				switch i {
+				case 0:
+					if s.list.CanPageUp() {
+						page = "↑"
+					} else {
+						page = string(top)
+					}
+				case last:
+					if s.list.CanPageDown() {
+						page = "↓"
+					}
+				}
 
-		for i, item := range items {
-			page := " "
+				output := []byte(page + " ")
 
-			switch i {
-			case 0:
-				if s.list.CanPageUp() {
-					page = "↑"
+				if i == idx {
+					output = append(
+						output,
+						render(
+							s.Templates.active,
+							item,
+						)...,
+					)
 				} else {
-					page = string(top)
+					output = append(
+						output,
+						render(
+							s.Templates.inactive,
+							item,
+						)...,
+					)
 				}
-			case last:
-				if s.list.CanPageDown() {
-					page = "↓"
-				}
+
+				sb.Write(output)
 			}
 
-			output := []byte(page + " ")
-
-			if i == idx {
-				output = append(output, render(s.Templates.active, item)...)
+			if idx == list.NotFound {
+				sb.WriteString("")
+				sb.WriteString("No results")
 			} else {
-				output = append(output, render(s.Templates.inactive, item)...)
+				active := items[idx]
+
+				details := s.renderDetails(active)
+				for _, d := range details {
+					sb.Write(d)
+				}
 			}
 
-			sb.Write(output)
-		}
+			sb.Flush()
 
-		if idx == list.NotFound {
-			sb.WriteString("")
-			sb.WriteString("No results")
-		} else {
-			active := items[idx]
-
-			details := s.renderDetails(active)
-			for _, d := range details {
-				sb.Write(d)
-			}
-		}
-
-		sb.Flush()
-
-		return nil, 0, true
-	})
+			return nil, 0, true
+		},
+	)
 
 	for {
 		_, err = rl.Readline()
@@ -392,14 +449,22 @@ func (s *Select) innerRun(cursorPos, scroll int, top rune) (int, string, error) 
 		clearScreen(sb)
 	} else {
 		sb.Reset()
-		sb.Write(render(s.Templates.selected, item))
+		sb.Write(
+			render(
+				s.Templates.selected,
+				item,
+			),
+		)
 		sb.Flush()
 	}
 
 	rl.Write([]byte(showCursor))
 	rl.Close()
 
-	return s.list.Index(), fmt.Sprintf("%v", item), err
+	return s.list.Index(), fmt.Sprintf(
+		"%v",
+		item,
+	), err
 }
 
 // ScrollPosition returns the current scroll position.
@@ -418,7 +483,10 @@ func (s *Select) prepareTemplates() error {
 	}
 
 	if tpls.Label == "" {
-		tpls.Label = fmt.Sprintf("%s {{.}}: ", IconInitial)
+		tpls.Label = fmt.Sprintf(
+			"%s {{.}}: ",
+			IconInitial,
+		)
 	}
 
 	tpl, err := template.New("").Funcs(tpls.FuncMap).Parse(tpls.Label)
@@ -429,7 +497,10 @@ func (s *Select) prepareTemplates() error {
 	tpls.label = tpl
 
 	if tpls.Active == "" {
-		tpls.Active = fmt.Sprintf("%s {{ . | underline }}", IconSelect)
+		tpls.Active = fmt.Sprintf(
+			"%s {{ . | underline }}",
+			IconSelect,
+		)
 	}
 
 	tpl, err = template.New("").Funcs(tpls.FuncMap).Parse(tpls.Active)
@@ -451,7 +522,10 @@ func (s *Select) prepareTemplates() error {
 	tpls.inactive = tpl
 
 	if tpls.Selected == "" {
-		tpls.Selected = fmt.Sprintf(`{{ "%s" | green }} {{ . | faint }}`, IconGood)
+		tpls.Selected = fmt.Sprintf(
+			`{{ "%s" | green }} {{ . | faint }}`,
+			IconGood,
+		)
 	}
 
 	tpl, err = template.New("").Funcs(tpls.FuncMap).Parse(tpls.Selected)
@@ -470,9 +544,11 @@ func (s *Select) prepareTemplates() error {
 	}
 
 	if tpls.Help == "" {
-		tpls.Help = fmt.Sprintf(`{{ "Use the arrow keys to navigate:" | faint }} {{ .NextKey | faint }} ` +
-			`{{ .PrevKey | faint }} {{ .PageDownKey | faint }} {{ .PageUpKey | faint }} ` +
-			`{{ if .Search }} {{ "and" | faint }} {{ .SearchKey | faint }} {{ "toggles search" | faint }}{{ end }}`)
+		tpls.Help = fmt.Sprintf(
+			`{{ "Use the arrow keys to navigate:" | faint }} {{ .NextKey | faint }} ` +
+				`{{ .PrevKey | faint }} {{ .PageDownKey | faint }} {{ .PageUpKey | faint }} ` +
+				`{{ if .Search }} {{ "and" | faint }} {{ .SearchKey | faint }} {{ "toggles search" | faint }}{{ end }}`,
+		)
 	}
 
 	tpl, err = template.New("").Funcs(tpls.FuncMap).Parse(tpls.Help)
@@ -524,11 +600,21 @@ type SelectWithAdd struct {
 // If the addLabel is selected in the list, this function will return a -1 index with the added label and no error.
 // Otherwise, it will return the index and the value of the selected item. In any case, if an error is triggered, it
 // will also return the error as its third return value.
-func (sa *SelectWithAdd) Run() (int, string, error) {
+func (sa *SelectWithAdd) Run() (
+	int,
+	string,
+	error,
+) {
 	if len(sa.Items) > 0 {
-		newItems := append([]string{sa.AddLabel}, sa.Items...)
+		newItems := append(
+			[]string{sa.AddLabel},
+			sa.Items...,
+		)
 
-		list, err := list.New(newItems, 5)
+		list, err := list.New(
+			newItems,
+			5,
+		)
 		if err != nil {
 			return 0, "", err
 		}
@@ -549,7 +635,11 @@ func (sa *SelectWithAdd) Run() (int, string, error) {
 			return 0, "", err
 		}
 
-		selected, value, err := s.innerRun(1, 0, '+')
+		selected, value, err := s.innerRun(
+			1,
+			0,
+			'+',
+		)
 		if err != nil || selected != 0 {
 			return selected - 1, value, err
 		}
@@ -573,11 +663,26 @@ func (s *Select) setKeys() {
 		return
 	}
 	s.Keys = &SelectKeys{
-		Prev:     Key{Code: KeyPrev, Display: KeyPrevDisplay},
-		Next:     Key{Code: KeyNext, Display: KeyNextDisplay},
-		PageUp:   Key{Code: KeyBackward, Display: KeyBackwardDisplay},
-		PageDown: Key{Code: KeyForward, Display: KeyForwardDisplay},
-		Search:   Key{Code: '/', Display: "/"},
+		Prev: Key{
+			Code:    KeyPrev,
+			Display: KeyPrevDisplay,
+		},
+		Next: Key{
+			Code:    KeyNext,
+			Display: KeyNextDisplay,
+		},
+		PageUp: Key{
+			Code:    KeyBackward,
+			Display: KeyBackwardDisplay,
+		},
+		PageDown: Key{
+			Code:    KeyForward,
+			Display: KeyForwardDisplay,
+		},
+		Search: Key{
+			Code:    '/',
+			Display: "/",
+		},
 	}
 }
 
@@ -587,18 +692,35 @@ func (s *Select) renderDetails(item interface{}) [][]byte {
 	}
 
 	var buf bytes.Buffer
-	w := ansiterm.NewTabWriter(&buf, 0, 0, 8, ' ', 0)
+	w := ansiterm.NewTabWriter(
+		&buf,
+		0,
+		0,
+		8,
+		' ',
+		0,
+	)
 
-	err := s.Templates.details.Execute(w, item)
+	err := s.Templates.details.Execute(
+		w,
+		item,
+	)
 	if err != nil {
-		fmt.Fprintf(w, "%v", item)
+		fmt.Fprintf(
+			w,
+			"%v",
+			item,
+		)
 	}
 
 	w.Flush()
 
 	output := buf.Bytes()
 
-	return bytes.Split(output, []byte("\n"))
+	return bytes.Split(
+		output,
+		[]byte("\n"),
+	)
 }
 
 func (s *Select) renderHelp(b bool) []byte {
@@ -618,14 +740,26 @@ func (s *Select) renderHelp(b bool) []byte {
 		Search:      b,
 	}
 
-	return render(s.Templates.help, keys)
+	return render(
+		s.Templates.help,
+		keys,
+	)
 }
 
-func render(tpl *template.Template, data interface{}) []byte {
+func render(
+	tpl *template.Template,
+	data interface{},
+) []byte {
 	var buf bytes.Buffer
-	err := tpl.Execute(&buf, data)
+	err := tpl.Execute(
+		&buf,
+		data,
+	)
 	if err != nil {
-		return []byte(fmt.Sprintf("%v", data))
+		return []byte(fmt.Sprintf(
+			"%v",
+			data,
+		))
 	}
 	return buf.Bytes()
 }

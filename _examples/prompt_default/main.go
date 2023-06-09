@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os/user"
 
-	"github.com/spaceweasel/promptui"
+	"github.com/king-glitch/promptui"
 )
 
 func main() {
@@ -31,9 +31,15 @@ func main() {
 	result, err := prompt.Run()
 
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
+		fmt.Printf(
+			"Prompt failed %v\n",
+			err,
+		)
 		return
 	}
 
-	fmt.Printf("Your username is %q\n", result)
+	fmt.Printf(
+		"Your username is %q\n",
+		result,
+	)
 }

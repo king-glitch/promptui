@@ -7,7 +7,7 @@ import (
 	"text/template"
 
 	"github.com/chzyer/readline"
-	"github.com/spaceweasel/promptui/screenbuf"
+	"github.com/king-glitch/promptui/screenbuf"
 )
 
 // Prompt represents a single line text field input with options for validation and input masks.
@@ -58,19 +58,22 @@ type Prompt struct {
 // text/template syntax. Custom state, colors and background color are available for use inside
 // the templates and are documented inside the Variable section of the docs.
 //
-// Examples
+// # Examples
 //
 // text/templates use a special notation to display programmable content. Using the double bracket notation,
 // the value can be printed with specific helper functions. For example
 //
 // This displays the value given to the template as pure, unstylized text.
-// 	'{{ . }}'
+//
+//	'{{ . }}'
 //
 // This displays the value colored in cyan
-// 	'{{ . | cyan }}'
+//
+//	'{{ . | cyan }}'
 //
 // This displays the value colored in red with a cyan background-color
-// 	'{{ . | red | cyan }}'
+//
+//	'{{ . | red | cyan }}'
 //
 // See the doc of text/template for more info: https://golang.org/pkg/text/template/
 type PromptTemplates struct {
@@ -112,7 +115,10 @@ type PromptTemplates struct {
 // Run executes the prompt. Its displays the label and default value if any, asking the user to enter a value.
 // Run will keep the prompt alive until it has been canceled from the command prompt or it has received a valid
 // value. It will return the value and an error if any occurred during the prompt's execution.
-func (p *Prompt) Run() (string, error) {
+func (p *Prompt) Run() (
+	string,
+	error,
+) {
 	var err error
 
 	err = p.prepareTemplates()
@@ -156,19 +162,44 @@ func (p *Prompt) Run() (string, error) {
 		input = ""
 	}
 	eraseDefault := input != "" && !p.AllowEdit
-	cur := NewCursor(input, p.Pointer, eraseDefault)
+	cur := NewCursor(
+		input,
+		p.Pointer,
+		eraseDefault,
+	)
 
-	listen := func(input []rune, pos int, key rune) ([]rune, int, bool) {
-		_, _, keepOn := cur.Listen(input, pos, key)
+	listen := func(
+		input []rune,
+		pos int,
+		key rune,
+	) (
+		[]rune,
+		int,
+		bool,
+	) {
+		_, _, keepOn := cur.Listen(
+			input,
+			pos,
+			key,
+		)
 		err := validFn(cur.Get())
 		var prompt []byte
 
 		if err != nil {
-			prompt = render(p.Templates.invalid, p.Label)
+			prompt = render(
+				p.Templates.invalid,
+				p.Label,
+			)
 		} else {
-			prompt = render(p.Templates.valid, p.Label)
+			prompt = render(
+				p.Templates.valid,
+				p.Label,
+			)
 			if p.IsConfirm {
-				prompt = render(p.Templates.prompt, p.Label)
+				prompt = render(
+					p.Templates.prompt,
+					p.Label,
+				)
 			}
 		}
 
@@ -177,11 +208,17 @@ func (p *Prompt) Run() (string, error) {
 			echo = cur.FormatMask(p.Mask)
 		}
 
-		prompt = append(prompt, []byte(echo)...)
+		prompt = append(
+			prompt,
+			[]byte(echo)...,
+		)
 		sb.Reset()
 		sb.Write(prompt)
 		if inputErr != nil {
-			validation := render(p.Templates.validation, inputErr)
+			validation := render(
+				p.Templates.validation,
+				inputErr,
+			)
 			sb.Write(validation)
 			inputErr = nil
 		}
@@ -226,13 +263,22 @@ func (p *Prompt) Run() (string, error) {
 		echo = cur.GetMask(p.Mask)
 	}
 
-	prompt := render(p.Templates.success, p.Label)
-	prompt = append(prompt, []byte(echo)...)
+	prompt := render(
+		p.Templates.success,
+		p.Label,
+	)
+	prompt = append(
+		prompt,
+		[]byte(echo)...,
+	)
 
 	if p.IsConfirm {
 		lowerDefault := strings.ToLower(p.Default)
 		if strings.ToLower(cur.Get()) != "y" && (lowerDefault != "y" || (lowerDefault == "y" && cur.Get() != "")) {
-			prompt = render(p.Templates.invalid, p.Label)
+			prompt = render(
+				p.Templates.invalid,
+				p.Label,
+			)
 			err = ErrAbort
 		}
 	}
@@ -269,7 +315,11 @@ func (p *Prompt) prepareTemplates() error {
 			if strings.ToLower(p.Default) == "y" {
 				confirm = "Y/n"
 			}
-			tpls.Confirm = fmt.Sprintf(`{{ "%s" | bold }} {{ . | bold }}? {{ "[%s]" | faint }} `, IconInitial, confirm)
+			tpls.Confirm = fmt.Sprintf(
+				`{{ "%s" | bold }} {{ . | bold }}? {{ "[%s]" | faint }} `,
+				IconInitial,
+				confirm,
+			)
 		}
 
 		tpl, err := template.New("").Funcs(tpls.FuncMap).Parse(tpls.Confirm)
@@ -280,7 +330,11 @@ func (p *Prompt) prepareTemplates() error {
 		tpls.prompt = tpl
 	} else {
 		if tpls.Prompt == "" {
-			tpls.Prompt = fmt.Sprintf("%s {{ . | bold }}%s ", bold(IconInitial), bold(":"))
+			tpls.Prompt = fmt.Sprintf(
+				"%s {{ . | bold }}%s ",
+				bold(IconInitial),
+				bold(":"),
+			)
 		}
 
 		tpl, err := template.New("").Funcs(tpls.FuncMap).Parse(tpls.Prompt)
@@ -292,7 +346,11 @@ func (p *Prompt) prepareTemplates() error {
 	}
 
 	if tpls.Valid == "" {
-		tpls.Valid = fmt.Sprintf("%s {{ . | bold }}%s ", bold(IconGood), bold(":"))
+		tpls.Valid = fmt.Sprintf(
+			"%s {{ . | bold }}%s ",
+			bold(IconGood),
+			bold(":"),
+		)
 	}
 
 	tpl, err := template.New("").Funcs(tpls.FuncMap).Parse(tpls.Valid)
@@ -303,7 +361,11 @@ func (p *Prompt) prepareTemplates() error {
 	tpls.valid = tpl
 
 	if tpls.Invalid == "" {
-		tpls.Invalid = fmt.Sprintf("%s {{ . | bold }}%s ", bold(IconBad), bold(":"))
+		tpls.Invalid = fmt.Sprintf(
+			"%s {{ . | bold }}%s ",
+			bold(IconBad),
+			bold(":"),
+		)
 	}
 
 	tpl, err = template.New("").Funcs(tpls.FuncMap).Parse(tpls.Invalid)
@@ -325,7 +387,10 @@ func (p *Prompt) prepareTemplates() error {
 	tpls.validation = tpl
 
 	if tpls.Success == "" {
-		tpls.Success = fmt.Sprintf("{{ . | faint }}%s ", Styler(FGFaint)(":"))
+		tpls.Success = fmt.Sprintf(
+			"{{ . | faint }}%s ",
+			Styler(FGFaint)(":"),
+		)
 	}
 
 	tpl, err = template.New("").Funcs(tpls.FuncMap).Parse(tpls.Success)

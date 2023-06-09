@@ -3,11 +3,17 @@ package main
 import (
 	"fmt"
 
-	"github.com/spaceweasel/promptui"
+	"github.com/king-glitch/promptui"
 )
 
 func main() {
-	items := []string{"Vim", "Emacs", "Sublime", "VSCode", "Atom"}
+	items := []string{
+		"Vim",
+		"Emacs",
+		"Sublime",
+		"VSCode",
+		"Atom",
+	}
 	index := -1
 	var result string
 	var err error
@@ -22,14 +28,23 @@ func main() {
 		index, result, err = prompt.Run()
 
 		if index == -1 {
-			items = append(items, result)
+			items = append(
+				items,
+				result,
+			)
 		}
 	}
 
 	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
+		fmt.Printf(
+			"Prompt failed %v\n",
+			err,
+		)
 		return
 	}
 
-	fmt.Printf("You choose %s\n", result)
+	fmt.Printf(
+		"You choose %s\n",
+		result,
+	)
 }
