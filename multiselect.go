@@ -261,7 +261,7 @@ func (s *MultiSelect) innerRun(cursorPos, scroll int, top rune) ([]int, error) {
 			s.list.Next()
 		case key == s.Keys.Prev.Code || (key == 'k' && !searchMode):
 			s.list.Prev()
-		case key == s.Keys.Toggle.Code && !searchMode:
+		case key == s.Keys.Toggle.Code:
 			idx := s.list.Index()
 			if s.selected[idx] {
 				delete(s.selected, idx)
@@ -337,7 +337,15 @@ func (s *MultiSelect) innerRun(cursorPos, scroll int, top rune) ([]int, error) {
 
 			var selectableItem []byte
 
-			if s.selected[s.list.Start()+i] {
+			e := -1
+			for j := 0; j < len(s.Items.([]string)); j++ {
+				if s.Items.([]string)[j] == item {
+					e = j
+					break
+				}
+			}
+
+			if  e != -1 && s.selected[e]{
 				selectableItem = render(s.Templates.selected, item)
 			} else {
 				selectableItem = render(s.Templates.unselected, item)
